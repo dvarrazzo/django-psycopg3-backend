@@ -1,11 +1,11 @@
 DATABASES = {
     'default': {
-        'ENGINE': 'psycopg3_django',
+        'ENGINE': 'django_psycopg3',
         'NAME': 'piro',
         'USER': 'piro',
     },
     'other': {
-        'ENGINE': 'psycopg3_django',
+        'ENGINE': 'django_psycopg3',
         'NAME': 'dj_other',
         'USER': 'piro',
     }
