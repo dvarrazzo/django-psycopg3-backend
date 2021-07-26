@@ -1,3 +1,5 @@
+# A django settings module to run the Django test suite using Psycopg 3.
+
 DATABASES = {
     'default': {
         'ENGINE': 'django_psycopg3',

@@ -1,3 +1,5 @@
+# A django settings module to run the Django test suite using psycopg2.
+
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
