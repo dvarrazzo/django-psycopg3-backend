@@ -89,7 +89,10 @@ class DatabaseIntrospection(BaseDatabaseIntrospection):
                 line.name,
                 line.type_code,
                 line.display_size,
-                line.internal_size,
+                # The test test_get_table_description_col_lengths expects the
+                # internal size to be the string length. This is wrong for variable
+                # length encodings and Psycopg 3 returns None, but let's play ball.
+                line.internal_size if line.internal_size is not None else line.display_size,
                 line.precision,
                 line.scale,
                 *field_map[line.name],

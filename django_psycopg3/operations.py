@@ -1,7 +1,10 @@
-from psycopg2.extras import Inet
+import ipaddress
+from collections.abc import Mapping, Sequence
 
 from django.conf import settings
 from django.db.backends.base.operations import BaseDatabaseOperations
+
+from psycopg.sql import SQL, Literal
 
 
 class DatabaseOperations(BaseDatabaseOperations):
@@ -117,7 +120,7 @@ class DatabaseOperations(BaseDatabaseOperations):
         return '"%s"' % name
 
     def set_time_zone_sql(self):
-        return "SET TIME ZONE %s"
+        return "select set_config('TimeZone', %s, false)"
 
     def sql_flush(self, style, tables, *, reset_sequences=False, allow_cascade=False):
         if not tables:
@@ -210,11 +213,7 @@ class DatabaseOperations(BaseDatabaseOperations):
             return ['DISTINCT'], []
 
     def last_executed_query(self, cursor, sql, params):
-        # https://www.psycopg.org/docs/cursor.html#cursor.query
-        # The query attribute is a Psycopg extension to the DB API 2.0.
-        if cursor.query is not None:
-            return cursor.query.decode()
-        return None
+        return compose(sql, params).as_string(cursor)
 
     def return_insert_columns(self, fields):
         if not fields:
@@ -246,7 +245,7 @@ class DatabaseOperations(BaseDatabaseOperations):
 
     def adapt_ipaddressfield_value(self, value):
         if value:
-            return Inet(value)
+            return ipaddress.ip_network(value)
         return None
 
     def subtract_temporals(self, internal_type, lhs, rhs):
@@ -273,3 +272,27 @@ class DatabaseOperations(BaseDatabaseOperations):
 
     def ignore_conflicts_suffix_sql(self, ignore_conflicts=None):
         return 'ON CONFLICT DO NOTHING' if ignore_conflicts else super().ignore_conflicts_suffix_sql(ignore_conflicts)
+
+
+def compose(query, params):
+    """Compose a query and argument on the client."""
+    if params is None:
+        return SQL(query)
+
+    # Convert placeholders from %s to {} and merge parameters with escaping
+    query = str(query).replace("{", "{{").replace("}", "}}")
+
+    if isinstance(params, Sequence):
+        query = query.replace("%s", "{}").replace("%%", "%")
+        params = (Literal(p) for p in params)
+        return SQL(query).format(*params)
+
+    elif isinstance(params, Mapping):
+        new_params = {}
+        for name, param in params.items():
+            new_params[name] = Literal(param)
+            query = query.replace("%%(%s)s" % name, "{%s}" % name)
+        return SQL(query).format(**new_params)
+    else:
+        raise TypeError(
+            "query parameters should be a mapping or a sequence, got %s" % type(params))

@@ -53,6 +53,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     supports_over_clause = True
     only_supports_unbounded_with_preceding_and_following = True
     supports_aggregate_filter_clause = True
+    supports_callproc_kwargs = False
     supported_explain_formats = {'JSON', 'TEXT', 'XML', 'YAML'}
     validates_explain_options = False  # A query will error on invalid options.
     supports_deferrable_unique_constraints = True

@@ -1,8 +1,10 @@
-import psycopg2
+import psycopg.sql
 
 from django.db.backends.base.schema import BaseDatabaseSchemaEditor
 from django.db.backends.ddl_references import IndexColumns
 from django.db.backends.utils import strip_quotes
+
+from .operations import compose
 
 
 class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
@@ -35,14 +37,21 @@ class DatabaseSchemaEditor(BaseDatabaseSchemaEditor):
 
     sql_delete_procedure = 'DROP FUNCTION %(procedure)s(%(param_types)s)'
 
+    def execute(self, sql, params=()):
+        # Merge the query client-side, as posgres won't do it server-side.
+
+        if params is None:
+            return super().execute(sql, params)
+
+        sql = compose(sql, params).as_string(None)
+
+        # Don't let the superclass touch anything.
+        return super().execute(sql, None)
+
     def quote_value(self, value):
         if isinstance(value, str):
             value = value.replace('%', '%%')
-        adapted = psycopg2.extensions.adapt(value)
-        if hasattr(adapted, 'encoding'):
-            adapted.encoding = 'utf8'
-        # getquoted() returns a quoted bytestring of the adapted value.
-        return adapted.getquoted().decode()
+        return psycopg.sql.quote(value)
 
     def _field_indexes_sql(self, model, field):
         output = super()._field_indexes_sql(model, field)
