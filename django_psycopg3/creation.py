@@ -41,7 +41,8 @@ class DatabaseCreation(BaseDatabaseCreation):
                 return
             super()._execute_create_test_db(cursor, parameters, keepdb)
         except Exception as e:
-            if not isinstance(e.__cause__, errors.DuplicateDatabase):
+            sqlstate = getattr(e.__cause__, "sqlstate", None)
+            if sqlstate != errors.DuplicateDatabase.sqlstate:
                 # All errors except "database already exists" cancel tests.
                 self.log('Got an error creating the test database: %s' % e)
                 sys.exit(2)
