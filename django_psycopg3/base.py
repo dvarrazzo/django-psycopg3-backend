@@ -16,6 +16,7 @@ from django.db.backends.base.base import BaseDatabaseWrapper
 from django.db.backends.utils import (
     CursorDebugWrapper as BaseCursorDebugWrapper,
 )
+from django.db.utils import Text
 from django.utils.asyncio import async_unsafe
 from django.utils.functional import cached_property
 # from django.utils.safestring import SafeString
@@ -29,7 +30,7 @@ except ImportError as e:
 from psycopg import sql
 from psycopg.types.datetime import TimestamptzLoader
 from psycopg.types.range import Range, RangeDumper
-from psycopg.types.string import TextLoader
+from psycopg.types.string import StrDumper, TextLoader
 
 
 def psycopg_version():
@@ -225,6 +226,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         self.connection.adapters.register_loader("inet", TextLoader)
         self.connection.adapters.register_loader("cidr", TextLoader)
         self.connection.adapters.register_dumper(Range, DjangoRangeDumper)
+        self.connection.adapters.register_dumper(Text, TextDumper)
 
     @async_unsafe
     def create_cursor(self, name=None):
@@ -375,6 +377,15 @@ class DjangoRangeDumper(RangeDumper):
         if dumper is not self and dumper.oid == TSRANGE_OID:
             dumper.oid = TSTZRANGE_OID
         return dumper
+
+
+class TextDumper(StrDumper):
+    """
+    A dumper to force strings to be dumped as text.
+
+    Useful where unknown doesn't work, e.g. variadic functions.
+    """
+    _oid = Database.postgres.types["text"].oid
 
 
 class Cursor(Database.Cursor):
