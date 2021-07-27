@@ -33,10 +33,13 @@ Install the backend (this project)::
 
 Customise the test config module if necessary::
 
-    vim dtests/test_psycopg3.py
+    vim configs/test_psycopg3.py
     # hack hack
-    :wq
+    # :wq
 
 Run the django test suite::
 
-    python django/tests/runtests.py --settings=dtests.test_psycopg3 -v2 --parallel=1 --noinput
+    python django/tests/runtests.py --settings=configs.test_psycopg3 -v2 --parallel=1 --noinput
+
+A ``configs.test_psycopg2`` module is also available to run the same tests
+with psycopg2 and check for regressions.
