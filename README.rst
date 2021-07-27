@@ -1,11 +1,15 @@
-A Django backend for PostgreSQL using psycopg > 2
+A Django backend for PostgreSQL using Psycopg > 2
 =================================================
 
 The backend passes the entire Django test suite, but it needs a few
-modifications to Django and its test suite. These changes will be proposed to
-the Django project in a series of merge requests. The modifications are
-available in the https://github.com/dvarrazzo/django/tree/psycopg3-support
-Django branch.
+modifications to Django and to its test suite. These changes will be proposed
+to the Django project in a series of merge requests.
+
+The modifications required iare available in the `psycopg3-support`__ Django
+branch. This is `the list of changes`__.
+
+.. __: https://github.com/dvarrazzo/django/tree/psycopg3-support
+.. __: https://github.com/django/django/compare/stable/3.2.x...dvarrazzo:psycopg3-support
 
 
 Approximative instructions
