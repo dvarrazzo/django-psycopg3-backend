@@ -226,7 +226,10 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         self.connection.adapters.register_loader("inet", TextLoader)
         self.connection.adapters.register_loader("cidr", TextLoader)
         self.connection.adapters.register_dumper(Range, DjangoRangeDumper)
-        self.connection.adapters.register_dumper(Text, TextDumper)
+
+        # Dump Text strings using the text oid, where the default unknown oid
+        # doesn't work well (e.g. in variadic functions)
+        self.connection.adapters.register_dumper(Text, StrDumper)
 
     @async_unsafe
     def create_cursor(self, name=None):
@@ -377,15 +380,6 @@ class DjangoRangeDumper(RangeDumper):
         if dumper is not self and dumper.oid == TSRANGE_OID:
             dumper.oid = TSTZRANGE_OID
         return dumper
-
-
-class TextDumper(StrDumper):
-    """
-    A dumper to force strings to be dumped as text.
-
-    Useful where unknown doesn't work, e.g. variadic functions.
-    """
-    _oid = Database.postgres.types["text"].oid
 
 
 class Cursor(Database.Cursor):
