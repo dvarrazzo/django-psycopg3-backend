@@ -3,7 +3,10 @@ A Django backend for PostgreSQL using Psycopg > 2
 
 The backend passes the entire Django test suite, but it needs a few
 modifications to Django and to its test suite. These changes will be proposed
-to the Django project in a series of merge requests.
+to the Django project in a series of merge requests. `A writeup`__ explains
+the changes in more details.
+
+.. __: https://www.psycopg.org/articles/2021/08/02/psycopg3-django-driver/
 
 The modifications required iare available in the `psycopg3-support`__ Django
 branch. This is `the list of changes`__.
