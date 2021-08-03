@@ -27,6 +27,7 @@ class DatabaseFeatures(BaseDatabaseFeatures):
     can_rollback_ddl = True
     supports_combined_alters = True
     nulls_order_largest = True
+    supports_group_column_alias = True
     supports_order_column_alias = True
     closed_cursor_error_class = InterfaceError
     has_case_insensitive_like = False
