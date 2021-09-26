@@ -19,7 +19,6 @@ from django.db.backends.utils import (
 from django.db.utils import Text
 from django.utils.asyncio import async_unsafe
 from django.utils.functional import cached_property
-# from django.utils.safestring import SafeString
 from django.utils.version import get_version_tuple
 
 try:
@@ -27,10 +26,16 @@ try:
 except ImportError as e:
     raise ImproperlyConfigured("Error loading psycopg module: %s" % e)
 
+import psycopg
 from psycopg import sql
+from psycopg.pq import Format, TransactionStatus
 from psycopg.types.datetime import TimestamptzLoader
 from psycopg.types.range import Range, RangeDumper
 from psycopg.types.string import StrDumper, TextLoader
+
+TIMESTAMPTZ_OID = psycopg.adapters.types["timestamptz"].oid
+TSRANGE_OID = psycopg.postgres.types["tsrange"].oid
+TSTZRANGE_OID = psycopg.postgres.types["tstzrange"].oid
 
 
 def psycopg_version():
@@ -137,6 +142,9 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     # PostgreSQL backend-specific attributes.
     _named_cursor_idx = 0
 
+    # Map the initial connection state
+    ctx_templates = {}
+
     def get_connection_params(self):
         settings_dict = self.settings_dict
         # None may be used to connect to the default 'postgres' db
@@ -171,7 +179,8 @@ class DatabaseWrapper(BaseDatabaseWrapper):
 
     @async_unsafe
     def get_new_connection(self, conn_params):
-        connection = Database.connect(**conn_params)
+        ctx = self.get_adapters_template()
+        connection = Database.connect(**conn_params, context=ctx)
 
         # self.isolation_level must be set:
         # - after connecting to the database in order to obtain the database's
@@ -192,44 +201,61 @@ class DatabaseWrapper(BaseDatabaseWrapper):
                     (options['isolation_level'], ))
             connection.isolation_level = self.isolation_level
 
+        # Use a cursor implementing callproc
+        connection.cursor_factory = Cursor
+
         return connection
 
     def ensure_timezone(self):
         if self.connection is None:
             return False
+
+        conn = self.connection
         conn_timezone_name = self.connection.info.parameter_status("TimeZone")
         timezone_name = self.timezone_name
         if timezone_name and conn_timezone_name != timezone_name:
-            with self.connection.cursor() as cursor:
-                cursor.execute(self.ops.set_time_zone_sql(), [timezone_name])
+            conn.execute(self.ops.set_time_zone_sql(), [timezone_name])
             return True
         return False
 
-    def init_connection_state(self):
-        self.connection.client_encoding = 'UTF8'
+    def get_adapters_template(self):
+        key = settings.USE_TZ
+        try:
+            return self.ctx_templates[key]
+        except KeyError:
+            pass
 
-        # Use a cursor implementing callproc
-        self.connection.cursor_factory = Cursor
-
-        timezone_changed = self.ensure_timezone()
-        if timezone_changed:
-            # Commit after setting the time zone (see #17062)
-            if not self.get_autocommit():
-                self.connection.commit()
+        # Create at adapters map extending the base one to base connections on
+        ctx = psycopg.adapt.AdaptersMap(psycopg.adapters)
 
         # Register a no-op dumper to avoid a round trip from psycopg3's decode
         # to json.dumps() to json.loads(), when using a custom decoder in
         # JSONField.
-        self.connection.adapters.register_loader("jsonb", TextLoader)
+        ctx.register_loader("jsonb", TextLoader)
 
         # Don't convert automatically from Postgres network types to Python ipaddress
-        self.connection.adapters.register_loader("inet", TextLoader)
-        self.connection.adapters.register_loader("cidr", TextLoader)
-        self.connection.adapters.register_dumper(Range, DjangoRangeDumper)
+        ctx.register_loader("inet", TextLoader)
+        ctx.register_loader("cidr", TextLoader)
+        ctx.register_dumper(Range, DjangoRangeDumper)
 
         # Dump Text strings using the text oid, where the default unknown oid
         # doesn't work well (e.g. in variadic functions)
-        self.connection.adapters.register_dumper(Text, StrDumper)
+        ctx.register_dumper(Text, StrDumper)
+
+        # Register a timestamptz loader configured on self.timezone.
+        # This, however, can be overridden by create_cursor.
+        register_tzloader(self.timezone, ctx)
+
+        self.ctx_templates[key] = ctx
+        return ctx
+
+    def init_connection_state(self):
+        timezone_changed = self.ensure_timezone()
+        if timezone_changed:
+            # Commit after setting the time zone (see #17062)
+            if self.connection.info.transaction_status == TransactionStatus.INTRANS:
+                self.connection.commit()
+
 
     @async_unsafe
     def create_cursor(self, name=None):
@@ -240,12 +266,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         else:
             cursor = self.connection.cursor()
 
-        if settings.USE_TZ:
-            ConfigTzLoader.timezone = self.timezone
-            self.connection.adapters.register_loader("timestamptz", ConfigTzLoader)
-        else:
-            self.connection.adapters.register_loader("timestamptz", ChopTzLoader)
-
+        # Register the cursor timezone only if the connection disagrees, so that
+        # we avoid to copy the adapters map.
+        tzloader = self.connection.adapters.get_loader(TIMESTAMPTZ_OID, Format.TEXT)
+        if self.timezone != tzloader.timezone:
+            register_tzloader(self.timezone, cursor)
         return cursor
 
     @async_unsafe
@@ -345,18 +370,11 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         return CursorDebugWrapper(cursor, self)
 
 
-class ChopTzLoader(TimestamptzLoader):
+class BaseTzLoader(TimestamptzLoader):
     """
-    Load a Postgres timestamptz to a datetime discarding the timezone.
-    """
-    def load(self, data):
-        res = super().load(data)
-        return res.replace(tzinfo=None)
+    Load a Postgres timestamptz using the a specific timezone.
 
-
-class ConfigTzLoader(TimestamptzLoader):
-    """
-    Load a Postgres timestamptz using the timezone specified by the config.
+    The timezone can be None too, in which case it will be chopped.
     """
     timezone = None
 
@@ -365,8 +383,12 @@ class ConfigTzLoader(TimestamptzLoader):
         return res.replace(tzinfo=self.timezone)
 
 
-TSRANGE_OID = Database.postgres.types["tsrange"].oid
-TSTZRANGE_OID = Database.postgres.types["tstzrange"].oid
+def register_tzloader(tz, context):
+    class SpecificTzLoader(BaseTzLoader):
+        timezone = tz
+
+    context.adapters.register_loader("timestamptz", SpecificTzLoader)
+
 
 
 class DjangoRangeDumper(RangeDumper):
