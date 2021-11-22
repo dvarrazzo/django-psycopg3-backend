@@ -23,11 +23,11 @@ Create and activate a virtualenv any way you like::
     python3 -m venv .venv
     source .venv/bin/activate
 
-Install django, from a branch supporting Psycopg 3. Clone the repos to get the
+Install Django, from a branch supporting Psycopg 3. Clone the repos to get the
 test suite too. Example::
 
     git clone -b psycopg3-support https://github.com/dvarrazzo/django.git
-    pip install ./django
+    pip install -e ./django
 
 Install Psycopg 3 from the master branch::
 
