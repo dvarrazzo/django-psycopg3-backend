@@ -3,12 +3,12 @@
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'piro',
+        'NAME': 'piro2',
         'USER': 'piro',
     },
     'other': {
         'ENGINE': 'django.db.backends.postgresql',
-        'NAME': 'dj_other',
+        'NAME': 'dj_other2',
         'USER': 'piro',
     }
 }
