@@ -21,9 +21,12 @@ setup(
     long_description="\n".join(readme.splitlines()[2:]).lstrip(),
     author="Daniele Varrazzo",
     author_email="daniele.varrazzo@gmail.com",
+    version="3.0.dev3",
     python_requires=">=3.6",
-    packages=find_packages(exclude=["tests"]),
+    install_requires=[
+        "psycopg ~= 3.0.4",
+    ],
     zip_safe=False,
     include_package_data=True,
-    version="3.0.dev2",
+    packages=find_packages(exclude=["tests"]),
 )
