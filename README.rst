@@ -8,11 +8,12 @@ the changes in more details.
 
 .. __: https://www.psycopg.org/articles/2021/08/02/psycopg3-django-driver/
 
-The modifications required iare available in the `psycopg3-support`__ Django
-branch. This is `the list of changes`__.
+The modifications required (targeting the main branch at the time of writing)
+are available in the `psycopg3-4.1`__ Django branch. This is `the list of
+changes`__.
 
-.. __: https://github.com/dvarrazzo/django/tree/psycopg3-support
-.. __: https://github.com/django/django/compare/stable/3.2.x...dvarrazzo:psycopg3-support
+.. __: https://github.com/dvarrazzo/django/tree/psycopg3-4.1
+.. __: https://github.com/django/django/compare/8b020f2e64...dvarrazzo:psycopg3-4.1
 
 
 Approximative instructions
@@ -26,7 +27,7 @@ Create and activate a virtualenv any way you like::
 Install Django, from a branch supporting Psycopg 3. Clone the repos to get the
 test suite too. Example::
 
-    git clone -b psycopg3-support https://github.com/dvarrazzo/django.git
+    git clone -b psycopg3-4.1 https://github.com/dvarrazzo/django.git
     pip install -e ./django
 
 Install Psycopg 3 from the master branch::
