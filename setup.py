@@ -22,7 +22,7 @@ setup(
     author="Daniele Varrazzo",
     author_email="daniele.varrazzo@gmail.com",
     version="3.0.dev3",
-    python_requires=">=3.6",
+    python_requires=">=3.8",
     install_requires=[
         "psycopg ~= 3.0.4",
     ],
