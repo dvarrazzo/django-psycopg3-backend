@@ -25,3 +25,4 @@ PASSWORD_HASHERS = [
 ]
 
 DEFAULT_AUTO_FIELD = "django.db.models.AutoField"
+USE_TZ = False
