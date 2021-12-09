@@ -4,7 +4,7 @@ from psycopg import errors
 
 from django.db.backends.base.creation import BaseDatabaseCreation
 from django.db.backends.utils import strip_quotes
-
+from django.core.exceptions import ImproperlyConfigured
 
 class DatabaseCreation(BaseDatabaseCreation):
 
@@ -21,9 +21,10 @@ class DatabaseCreation(BaseDatabaseCreation):
 
     def sql_table_creation_suffix(self):
         test_settings = self.connection.settings_dict['TEST']
-        assert test_settings['COLLATION'] is None, (
-            "PostgreSQL does not support collation setting at database creation time."
-        )
+        if test_settings['COLLATION'] is not None: 
+            raise ImproperlyConfigured(
+                "PostgreSQL does not support collation setting at database creation time."
+            )
         return self._get_database_create_suffix(
             encoding=test_settings['CHARSET'],
             template=test_settings.get('TEMPLATE'),
