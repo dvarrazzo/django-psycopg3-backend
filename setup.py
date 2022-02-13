@@ -24,7 +24,7 @@ setup(
     version="3.0.dev3",
     python_requires=">=3.8",
     install_requires=[
-        "psycopg ~= 3.0.4",
+        "psycopg >= 3.0.4",
     ],
     zip_safe=False,
     include_package_data=True,
