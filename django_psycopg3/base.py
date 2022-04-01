@@ -145,6 +145,13 @@ class DatabaseWrapper(BaseDatabaseWrapper):
     # Map the initial connection state
     ctx_templates = {}
 
+    def get_database_version(self):
+        """
+        Return a tuple of the database's version.
+        E.g. for pg_version 120004, return (12, 4).
+        """
+        return divmod(self.pg_version, 10000)
+
     def get_connection_params(self):
         settings_dict = self.settings_dict
         # None may be used to connect to the default 'postgres' db
@@ -250,6 +257,7 @@ class DatabaseWrapper(BaseDatabaseWrapper):
         return ctx
 
     def init_connection_state(self):
+        super().init_connection_state()
         timezone_changed = self.ensure_timezone()
         if timezone_changed:
             # Commit after setting the time zone (see #17062)
